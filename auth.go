@@ -1,6 +1,7 @@
 package appcom
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -61,7 +62,7 @@ func NeedLogin(callback func(c *gin.Context, cookie CookieInfo) bool, timeout in
 		now := time.Now().UnixNano()
 
 		for k, v := range c.Request.Header {
-			Println(k, v)
+			fmt.Println(k, v)
 		}
 
 		cookie, err := parseCookie(c)
@@ -88,7 +89,7 @@ func NeedLogin(callback func(c *gin.Context, cookie CookieInfo) bool, timeout in
 		}
 
 		end := time.Now().UnixNano()
-		Println("t--->", end-now)
+		fmt.Println("t--->", end-now)
 
 		c.Next()
 	}

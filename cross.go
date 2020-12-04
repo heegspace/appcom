@@ -1,6 +1,8 @@
 package appcom
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"net/http"
@@ -13,7 +15,7 @@ func Corss() gin.HandlerFunc {
 		origin := c.Request.Header.Get("Origin")
 
 		if origin != "" {
-			Println("origin-->", origin)
+			fmt.Println("origin-->", origin)
 			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 			c.Header("Access-Control-Allow-Origin", origin) // 这是允许访问所有域
 			// c.Header("Access-Control-Allow-Origin", "*")
