@@ -1,4 +1,4 @@
-package nodecom
+package appcom
 
 import (
 	"encoding/json"
