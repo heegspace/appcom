@@ -2,6 +2,9 @@ package appcom
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,4 +23,31 @@ func Logger() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// 获取客户端ip
+//
+func GetIP(r *http.Request) string {
+	ip := r.Header.Get("X-Real-IP")
+	if nil != net.ParseIP(ip) {
+		return ip
+	}
+
+	ip = r.Header.Get("X-Forward-For")
+	for _, i := range strings.Split(ip, ",") {
+		if nil != net.ParseIP(i) {
+			return i
+		}
+	}
+
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if nil != err {
+		return "127.0.0.1"
+	}
+
+	if nil != net.ParseIP(ip) {
+		return ip
+	}
+
+	return "127.0.0.1"
 }
