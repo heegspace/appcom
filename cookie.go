@@ -18,12 +18,13 @@ type TokenInfo struct {
 	Token  string
 	Role   int64
 	Expire int64
+	Platom int64
 }
 
 func (token TokenInfo) String() string {
-	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d"
+	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d"
 
-	return fmt.Sprintf(str, token.UID, token.Time, token.Token, token.Role, token.Expire)
+	return fmt.Sprintf(str, token.UID, token.Time, token.Token, token.Role, token.Expire, token.Platom)
 }
 
 var ivspec = []byte("0000000000000000")
