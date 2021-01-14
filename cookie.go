@@ -13,18 +13,22 @@ import (
 
 // 用于设置cookie的结构
 type TokenInfo struct {
-	UID    string
-	Time   int64
-	Token  string
-	Role   int64
-	Expire int64
-	Platom int64
+	UID     string
+	Time    int64
+	Token   string
+	Role    int64
+	Expire  int64
+	Platom  int64
+	Openid  string // 开发平台id
+	Unionid string // 用户唯一id
+	Refresh string // token刷新的acess
+	Extra   string // 扩展信息
 }
 
 func (token TokenInfo) String() string {
-	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d"
+	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
 
-	return fmt.Sprintf(str, token.UID, token.Time, token.Token, token.Role, token.Expire, token.Platom)
+	return fmt.Sprintf(str, token.UID, token.Time, token.Token, token.Role, token.Expire, token.Platom, token.Openid, token.Unionid, token.Refresh, token.Extra)
 }
 
 var ivspec = []byte("0000000000000000")
