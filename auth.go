@@ -9,7 +9,7 @@ import (
 )
 
 type CookieInfo struct {
-	Jyauth string `json:"jyauth" form:"jyauth"`
+	Jyauth string `json:"hgauth" form:"hgauth"`
 	Token  string `json:"__RequestVerificationToken" form:"__RequestVerificationToken"`
 }
 
@@ -19,7 +19,7 @@ type CookieInfo struct {
 //
 func parseCookie(c *gin.Context) (auth CookieInfo, err error) {
 	var cookie CookieInfo
-	cookie.Jyauth, err = c.Cookie("jyauth")
+	cookie.Jyauth, err = c.Cookie("hgauth")
 	if nil != err {
 		goto query
 	}
