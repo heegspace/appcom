@@ -13,7 +13,7 @@ import (
 
 // 用于设置cookie的结构
 type TokenInfo struct {
-	UID     string
+	UID     int64
 	Time    int64
 	Token   string
 	Role    int64
@@ -26,7 +26,7 @@ type TokenInfo struct {
 }
 
 func (token TokenInfo) String() string {
-	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
+	str := "UID: %ld Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
 
 	return fmt.Sprintf(str, token.UID, token.Time, token.Token, token.Role, token.Expire, token.Platom, token.Openid, token.Unionid, token.Refresh, token.Extra)
 }
@@ -101,8 +101,8 @@ func aesDecode(token, key string) (subject string, err error) {
 // @return string,error
 //
 func EnCookie(src TokenInfo, key string) (token string, err error) {
-	if 0 == len(src.UID) {
-		err = errors.New("Uid is empty")
+	if 0 == src.UID {
+		err = errors.New("Uid is 0")
 		return
 	}
 
