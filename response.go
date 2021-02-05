@@ -41,3 +41,24 @@ func HandleEnc(c *gin.Context, crypt string, style string, key string) {
 
 	return
 }
+
+// 自定义头部和状态码响应数据
+//
+// @param c
+// @param headers 	响应头
+// @param crypt 	加密的数据
+// @param code 		响应状态码
+//
+func HandleCustomEnc(c *gin.Context, headers map[string]string, crypt string, code int) {
+	// X-Crypt-Style
+	c.Writer.Header().Set("SE8DF5B93A6EFCEC229845238CB3F6412", style)
+	// X-Crypt-Key
+	c.Writer.Header().Set("K466B0BD10CD3C6CB55D541F3D4585CA1", key)
+
+	for k, v := range headers {
+		c.Writer.Header().Set(k, v)
+	}
+
+	c.String(code, crypt)
+	return
+}
