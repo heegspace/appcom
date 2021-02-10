@@ -50,11 +50,6 @@ func HandleEnc(c *gin.Context, crypt string, style string, key string) {
 // @param code 		响应状态码
 //
 func HandleCustomEnc(c *gin.Context, headers map[string]string, crypt string, code int) {
-	// X-Crypt-Style
-	c.Writer.Header().Set("SE8DF5B93A6EFCEC229845238CB3F6412", style)
-	// X-Crypt-Key
-	c.Writer.Header().Set("K466B0BD10CD3C6CB55D541F3D4585CA1", key)
-
 	for k, v := range headers {
 		c.Writer.Header().Set(k, v)
 	}
