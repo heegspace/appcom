@@ -94,3 +94,32 @@ func NeedLogin(callback func(c *gin.Context, cookie CookieInfo) bool, timeout in
 		c.Next()
 	}
 }
+
+// 权限中间件，主要是获取cookie中的信息
+//
+// @param callback 	回调函数，用于回传cookie数据
+// @param timeout 	token的过期时间
+//
+func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ck CookieInfo
+		jyauth, err := c.Cookie("hgauth")
+		if nil != err {
+			c.Next()
+
+			return
+		}
+		ck.Jyauth = jyauth
+
+		token, err := c.Cookie("__RequestVerificationToken")
+		if nil != err {
+			c.Next()
+
+			return
+		}
+		ck.Token = token
+
+		callback(c, ck)
+		c.Next()
+	}
+}
