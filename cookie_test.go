@@ -8,7 +8,7 @@ import (
 
 func TestEnCookie(t *testing.T) {
 	var token TokenInfo
-	token.UID = "12345"
+	token.UID = 122222111111111111
 	token.Time = 123123
 	token.Token = "asdf2112341234"
 	token.Role = 1
