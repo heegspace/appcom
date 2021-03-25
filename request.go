@@ -29,11 +29,11 @@ func PageSize(c *gin.Context) RequestPage {
 		param.Size = 20
 	}
 
-	if 0 < param.Page {
-		param.Page = param.Page - 1
-	}
+	// if 0 < param.Page {
+	// 	param.Page = param.Page - 1
+	// }
 
-	param.Page = param.Page * param.Size
+	// param.Page = param.Page * param.Size
 
 	return param
 }
