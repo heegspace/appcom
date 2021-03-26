@@ -1,6 +1,9 @@
 package appcom
 
 import (
+	"io/ioutil"
+	"mime/multipart"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,11 +32,24 @@ func PageSize(c *gin.Context) RequestPage {
 		param.Size = 20
 	}
 
-	// if 0 < param.Page {
-	// 	param.Page = param.Page - 1
-	// }
-
-	// param.Page = param.Page * param.Size
-
 	return param
+}
+
+// 读取http中POST的form中文件的数据
+//
+// @param file 	对就对象
+//
+func ReadFormFileData(file *multipart.FileHeader) (data []byte, err error) {
+	refile, err := file.Open()
+	if nil != err {
+		return
+	}
+	defer refile.Close()
+
+	data, err = ioutil.ReadAll(refile)
+	if nil != err {
+		return
+	}
+
+	return
 }
