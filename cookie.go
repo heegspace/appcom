@@ -18,6 +18,7 @@ type TokenInfo struct {
 	Time    int64
 	Token   string
 	Role    int64
+	Vip     int64
 	Expire  int64
 	Platom  int64
 	Appid   string // appid
@@ -28,9 +29,9 @@ type TokenInfo struct {
 }
 
 func (token TokenInfo) String() string {
-	str := "UID: %s Time: %d Token: %s  Role: %d  Expire: %d  Platom: %d  Applid: %s  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
+	str := "UID: %s Time: %d Token: %s 	Vip: %d  Role: %d  Expire: %d  Platom: %d  Applid: %s  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
 
-	return fmt.Sprintf(str, strconv.FormatInt(token.UID, 10), token.Time, token.Token, token.Role, token.Expire, token.Platom, token.Appid, token.Openid, token.Unionid, token.Refresh, token.Extra)
+	return fmt.Sprintf(str, strconv.FormatInt(token.UID, 10), token.Time, token.Token, token.Vip, token.Role, token.Expire, token.Platom, token.Appid, token.Openid, token.Unionid, token.Refresh, token.Extra)
 }
 
 var ivspec = []byte("0000000000000000")
