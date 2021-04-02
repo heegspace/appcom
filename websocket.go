@@ -2,6 +2,7 @@ package appcom
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"runtime"
 	"sync"
@@ -14,7 +15,7 @@ import (
 const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
-	ClientChanSize = 32
+	ClientChanSize = 1024 * 4
 	maxMessageSize = 1024 * 64
 
 	RecvBufferSize = 64 * 1024
@@ -194,16 +195,58 @@ func (this *ClientManage) RemoveAll() {
 	return
 }
 
+// 将数据发生到对应的netid的客户端
+//
+// @param netid 	客户端对应的id
+// @param data 		要发送的数据
+//
+func (this *ClientManage) Send(netid int64, data []byte) (err error) {
+	if 0 >= netid {
+		err = errors.New("Send netid is error")
+
+		return
+	}
+
+	if 0 == len(data) {
+		err = errors.New("Send data is nil")
+
+		return
+	}
+
+	if _, ok := this.Clients[netid]; !ok {
+		err = errors.New("Netid to client not exists.")
+
+		return
+	}
+
+	if ClientChanSize < (len(this.Clients[netid].Send) + 10) {
+		err = errors.New("Send chan is full")
+
+		return
+	}
+
+	this.Clients[netid].Send <- data
+	return
+}
+
 // 广播数据到所有连接
 //
 // @param msg
 //
-func (this *ClientManage) Broadcast(msg []byte) {
+func (this *ClientManage) Broadcast(msg []byte) (err error) {
 	if 0 == len(msg) {
+		err = errors.New("Broadcast data is nil")
+
 		return
 	}
 
 	for _, client := range this.Clients {
+		if ClientChanSize < (len(client.Send) + 10) {
+			err = errors.New("Broadcast other chan is full")
+
+			continue
+		}
+
 		client.Send <- msg
 	}
 
