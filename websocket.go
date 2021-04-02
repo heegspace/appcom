@@ -220,6 +220,71 @@ type WebSocketServer struct {
 	Status  string
 }
 
+var gWebSocketServer *WebSocketServer
+
+// 创建性的WebsocketServer对象
+func GetWebSocketServer() *WebSocketServer {
+	if nil == gWebSocketServer {
+		gWebSocketServer = &WebSocketServer{
+			register:   make(chan *Client),
+			unregister: make(chan *Client),
+			stop:       make(chan bool),
+			Status:     "New",
+			isRun:      false,
+			Clients:    NewClientManage(),
+		}
+	}
+
+	return gWebSocketServer
+}
+
+// 获取client管理结构
+//
+func (this *WebSocketServer) ClientManage() *ClientManage {
+	return this.Clients
+}
+
+// 停止服务运行
+//
+func (this *WebSocketServer) Stop() {
+	this.stop <- true
+	this.Status = "Stop"
+
+	return
+}
+
+// websocket建立的状态服务
+// 主要是监听连接状态
+//
+func (h *WebSocketServer) Run() {
+	if h.isRun {
+		return
+	}
+
+	h.isRun = true
+	h.Status = "Run"
+	for {
+		select {
+		case client := <-h.register:
+			h.Clients.AddClient(client)
+
+			break
+
+		case client := <-h.unregister:
+			h.Clients.RemoveClient(client)
+
+			break
+
+		// 停止websocket服务运行
+		case <-h.stop:
+			h.isRun = false
+			h.Clients.RemoveAll()
+
+			return
+		}
+	}
+}
+
 // 创建websocket连接
 // hub 		websocket服务对象
 // w 		http请求的响应对象
