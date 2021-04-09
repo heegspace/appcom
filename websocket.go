@@ -157,10 +157,16 @@ func (this *ClientManage) ClientById(id int64) (client *Client) {
 }
 
 // 添加客户端到管理器中
+// 如果对应的id已经存在，则关闭已经存在的，然后设置为新的client
 //
 func (this *ClientManage) AddClient(client *Client) {
 	this.ConnectsLock.Lock()
 	defer this.ConnectsLock.Unlock()
+	if _, ok := this.Clients[client.Id]; ok {
+		delete(this.Clients, client.Id)
+		close(client.Send)
+		this.Connects--
+	}
 
 	this.Clients[client.Id] = client
 	this.Connects++
