@@ -102,6 +102,10 @@ func NeedLogin(callback func(c *gin.Context, cookie CookieInfo) bool, timeout in
 //
 func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		for k, v := range c.Request.Header {
+			fmt.Println(k, v)
+		}
+
 		var ck CookieInfo
 		jyauth, err := c.Cookie("hgauth")
 		if nil != err {
