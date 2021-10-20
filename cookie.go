@@ -12,6 +12,23 @@ import (
 	"strings"
 )
 
+// token扩展信息
+type TokenExtra struct {
+	VipExpire 	int64
+}
+
+func (obj TokenExtra) Encode() string {
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(obj)
+	if nil != err {
+		return ""
+	}
+
+	data := buf.Bytes()
+	return string(data)
+}
+
 // 用于设置cookie的结构
 type TokenInfo struct {
 	UID     int64
@@ -32,6 +49,18 @@ func (token TokenInfo) String() string {
 	str := "UID: %s Time: %d Token: %s 	Vip: %d  Role: %d  Expire: %d  Platom: %d  Applid: %s  Openid: %s  Unionid: %s  Refresh: %s  Extra: %s"
 
 	return fmt.Sprintf(str, strconv.FormatInt(token.UID, 10), token.Time, token.Token, token.Vip, token.Role, token.Expire, token.Platom, token.Appid, token.Openid, token.Unionid, token.Refresh, token.Extra)
+}
+
+func (token TokenInfo) ToExtra() (TokenExtra,error) {
+	var extra TokenExtra
+	buf := bytes.NewBufferString(token.Extra)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(&extra)
+	if nil != err {
+		return extra,err
+	}
+
+	return extra,nil
 }
 
 var ivspec = []byte("0000000000000000")
@@ -122,11 +151,21 @@ func EnCookie(src TokenInfo, key string) (token string, err error) {
 		return
 	}
 
-	data := buf.Bytes()
-	token, err = aesEncode(string(data), key)
+	data := string(buf.Bytes())
+	data = strings.Replace(data, "0", "/", -1)
+	data = strings.Replace(data, "1", "!", -1)
+	data = strings.Replace(data, "2", "@", -1)
+	data = strings.Replace(data, "3", "#", -1)
+	data = strings.Replace(data, "7", "$", -1)
+	data = strings.Replace(data, "8", "%", -1)
+	data = strings.Replace(data, "9", "^", -1)
+	data = strings.Replace(data, "f", "++", -1)
+	data = strings.Replace(data, "a", "--", -1)
+	token, err = aesEncode(data, key)
 	if nil != err {
 		return
 	}
+	
 	return
 }
 
@@ -142,10 +181,20 @@ func DeCookie(src string, key string) (token TokenInfo, err error) {
 		return
 	}
 
+	
 	obj, err := aesDecode(src, key)
 	if nil != err {
 		return
 	}
+	obj = strings.Replace(obj, "/", "0", -1)
+	obj = strings.Replace(obj, "!", "1", -1)
+	obj = strings.Replace(obj, "@", "2", -1)
+	obj = strings.Replace(obj, "#", "3", -1)
+	obj = strings.Replace(obj, "$", "7", -1)
+	obj = strings.Replace(obj, "%", "8", -1)
+	obj = strings.Replace(obj, "^", "9", -1)
+	obj = strings.Replace(obj, "++", "f", -1)
+	obj = strings.Replace(obj, "--", "a", -1)
 
 	buf := bytes.NewBufferString(obj)
 	dec := gob.NewDecoder(buf)
