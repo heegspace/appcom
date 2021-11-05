@@ -24,18 +24,18 @@ func intToByteArray(value int64, bufferSize int) []byte {
 	return toWriteLen
 }
 
-type ListenCallback func(context.Context, *net.TCPListener) error
-type RecvCallback func(context.Context, *net.TCPConn, []byte) error
-type CloseCallback func(context.Context, *net.TCPConn) error
+type LCallback func(context.Context, *net.TCPListener) error
+type RCallback func(context.Context, *net.TCPConn, []byte) error
+type CCallback func(context.Context, *net.TCPConn) error
 type TCPListener struct {
 	socket          *net.TCPListener
 	address         string
 	headerByteSize  int
 	maxMessageSize  int
 	enableLogging   bool
-	listenCallback  ListenCallback
-	recvcallback    RecvCallback
-	closeCallback   CloseCallback
+	lCallback       LCallback
+	rCallback       RCallback
+	cCallback       CCallback
 	shutdownChannel chan struct{}
 	shutdownGroup   *sync.WaitGroup
 }
@@ -44,9 +44,9 @@ type TCPListenerConfig struct {
 	MaxMessageSize int
 	EnableLogging  bool
 	Address        string
-	listenCallback ListenCallback
-	recvcallback   RecvCallback
-	closeCallback  CloseCallback
+	LCallback      LCallback
+	RCallback      RCallback
+	CCallback      CCallback
 }
 
 func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
@@ -59,9 +59,9 @@ func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
 		enableLogging:   cfg.EnableLogging,
 		maxMessageSize:  maxMessageSize,
 		headerByteSize:  4, // 4byte(int32)
-		listenCallback:  cfg.listenCallback,
-		recvcallback:    cfg.recvcallback,
-		closeCallback:   cfg.closeCallback,
+		lCallback:       cfg.LCallback,
+		rCallback:       cfg.RCallback,
+		cCallback:       cfg.CCallback,
 		shutdownChannel: make(chan struct{}),
 		address:         cfg.Address,
 		shutdownGroup:   &sync.WaitGroup{},
@@ -87,7 +87,7 @@ func (btl *TCPListener) blockListen() error {
 			default:
 			}
 		} else {
-			go handleListenedConn(btl.address, conn, btl.headerByteSize, btl.maxMessageSize, btl.enableLogging, btl.recvcallback, btl.shutdownChannel, btl.shutdownGroup)
+			go handleListenedConn(btl.address, conn, btl.headerByteSize, btl.maxMessageSize, btl.enableLogging, btl.rCallback, btl.shutdownChannel, btl.shutdownGroup)
 		}
 	}
 }
@@ -102,7 +102,7 @@ func (btl *TCPListener) openSocket() error {
 		return err
 	}
 	btl.socket = receiveSocket
-	btl.listenCallback(context.TODO(), receiveSocket)
+	btl.lCallback(context.TODO(), receiveSocket)
 	return err
 }
 
@@ -123,7 +123,7 @@ func (btl *TCPListener) StartListeningAsync() error {
 	return err
 }
 
-func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, maxMessageSize int, enableLogging bool, cb RecvCallback, sdChan <-chan struct{}, sdGroup *sync.WaitGroup) {
+func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, maxMessageSize int, enableLogging bool, cb RCallback, sdChan <-chan struct{}, sdGroup *sync.WaitGroup) {
 	sdGroup.Add(1)
 	defer sdGroup.Done()
 	headerBuffer := make([]byte, headerByteSize)
