@@ -24,18 +24,19 @@ func intToByteArray(value int64, bufferSize int) []byte {
 	return toWriteLen
 }
 
-type LCallback func(context.Context, *net.TCPListener) error
-type RCallback func(context.Context, *net.TCPConn, []byte) error
-type CCallback func(context.Context, *net.TCPConn) error
+type ListenCb func(context.Context, *net.TCPListener) error
+type RecvCb func(context.Context, *net.TCPConn, int, []byte) error
+type ConnectCb func(context.Context, *net.TCPConn) error
+type CloseCb func(context.Context, *net.TCPConn) error
 type TCPListener struct {
 	socket          *net.TCPListener
 	address         string
 	headerByteSize  int
 	maxMessageSize  int
-	enableLogging   bool
-	lCallback       LCallback
-	rCallback       RCallback
-	cCallback       CCallback
+	listenCb        ListenCb
+	connectCb       ConnectCb
+	recvCb          RecvCb
+	closeCb         CloseCb
 	shutdownChannel chan struct{}
 	shutdownGroup   *sync.WaitGroup
 }
@@ -44,9 +45,10 @@ type TCPListenerConfig struct {
 	MaxMessageSize int
 	EnableLogging  bool
 	Address        string
-	LCallback      LCallback
-	RCallback      RCallback
-	CCallback      CCallback
+	ListenCb       ListenCb
+	ConnectCb      ConnectCb
+	RecvCb         RecvCb
+	CloseCb        CloseCb
 }
 
 func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
@@ -56,12 +58,12 @@ func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
 		maxMessageSize = cfg.MaxMessageSize
 	}
 	btl := &TCPListener{
-		enableLogging:   cfg.EnableLogging,
 		maxMessageSize:  maxMessageSize,
 		headerByteSize:  4, // 4byte(int32)
-		lCallback:       cfg.LCallback,
-		rCallback:       cfg.RCallback,
-		cCallback:       cfg.CCallback,
+		listenCb:        cfg.ListenCb,
+		connectCb:       cfg.ConnectCb,
+		recvCb:          cfg.RecvCb,
+		closeCb:         cfg.CloseCb,
 		shutdownChannel: make(chan struct{}),
 		address:         cfg.Address,
 		shutdownGroup:   &sync.WaitGroup{},
@@ -78,16 +80,14 @@ func (btl *TCPListener) blockListen() error {
 	for {
 		conn, err := btl.socket.AcceptTCP()
 		if err != nil {
-			if btl.enableLogging {
-				logger.Error("[blockListen] Error attempting to accept connection: ", err)
-			}
+			logger.Error("[blockListen] Error attempting to accept connection: ", err)
 			select {
 			case <-btl.shutdownChannel:
 				return nil
 			default:
 			}
 		} else {
-			go handleListenedConn(btl.address, conn, btl.headerByteSize, btl.maxMessageSize, btl.enableLogging, btl.rCallback, btl.shutdownChannel, btl.shutdownGroup)
+			go handleListenedConn(btl.address, conn, btl.headerByteSize, btl.maxMessageSize, btl.recvCb, btl.shutdownChannel, btl.shutdownGroup)
 		}
 	}
 }
@@ -102,7 +102,7 @@ func (btl *TCPListener) openSocket() error {
 		return err
 	}
 	btl.socket = receiveSocket
-	btl.lCallback(context.TODO(), receiveSocket)
+	btl.listenCb(context.TODO(), receiveSocket)
 	return err
 }
 
@@ -123,7 +123,7 @@ func (btl *TCPListener) StartListeningAsync() error {
 	return err
 }
 
-func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, maxMessageSize int, enableLogging bool, cb RCallback, sdChan <-chan struct{}, sdGroup *sync.WaitGroup) {
+func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, maxMessageSize int, cb RecvCb, sdChan <-chan struct{}, sdGroup *sync.WaitGroup) {
 	sdGroup.Add(1)
 	defer sdGroup.Done()
 	headerBuffer := make([]byte, headerByteSize)
@@ -144,14 +144,12 @@ func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, m
 			totalHeaderBytesRead += bytesRead
 		}
 		if headerReadError != nil {
-			if enableLogging {
-				if headerReadError != io.EOF {
-					// Log the error we got from the call to read
-					logger.Infof("Error when trying to read from address %s. Tried to read %d, actually read %d. Underlying error: %s", address, headerByteSize, totalHeaderBytesRead, headerReadError)
-				} else {
-					// Client closed the conn
-					logger.Infof("Address %s: Client closed connection during header read. Underlying error: %s", address, headerReadError)
-				}
+			if headerReadError != io.EOF {
+				// Log the error we got from the call to read
+				logger.Infof("Error when trying to read from address %s. Tried to read %d, actually read %d. Underlying error: %s", address, headerByteSize, totalHeaderBytesRead, headerReadError)
+			} else {
+				// Client closed the conn
+				logger.Infof("Address %s: Client closed connection during header read. Underlying error: %s", address, headerReadError)
 			}
 			conn.Close()
 			return
@@ -162,16 +160,12 @@ func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, m
 		// Not sure what the correct way to handle these errors are. For now, bomb out
 		if bytesParsed == 0 {
 			// "Buffer too small"
-			if enableLogging {
-				logger.Infof("Address %s: 0 Bytes parsed from header. Underlying error: %s", address, headerReadError)
-			}
+			logger.Infof("Address %s: 0 Bytes parsed from header. Underlying error: %s", address, headerReadError)
 			conn.Close()
 			return
 		} else if bytesParsed < 0 {
 			// "Buffer overflow"
-			if enableLogging {
-				logger.Infof("Address %s: Buffer Less than zero bytes parsed from header. Underlying error: %s", address, headerReadError)
-			}
+			logger.Infof("Address %s: Buffer Less than zero bytes parsed from header. Underlying error: %s", address, headerReadError)
 			conn.Close()
 			return
 		}
@@ -186,14 +180,12 @@ func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, m
 		}
 
 		if dataReadError != nil {
-			if enableLogging {
-				if dataReadError != io.EOF {
-					// log the error from the call to read
-					logger.Infof("Address %s: Failure to read from connection. Was told to read %d by the header, actually read %d. Underlying error: %s", address, msgLength, totalDataBytesRead, dataReadError)
-				} else {
-					// The client wrote the header but closed the connection
-					logger.Infof("Address %s: Client closed connection during data read. Underlying error: %s", address, dataReadError)
-				}
+			if dataReadError != io.EOF {
+				// log the error from the call to read
+				logger.Infof("Address %s: Failure to read from connection. Was told to read %d by the header, actually read %d. Underlying error: %s", address, msgLength, totalDataBytesRead, dataReadError)
+			} else {
+				// The client wrote the header but closed the connection
+				logger.Infof("Address %s: Client closed connection during data read. Underlying error: %s", address, dataReadError)
 			}
 
 			conn.Close()
@@ -202,8 +194,8 @@ func handleListenedConn(address string, conn *net.TCPConn, headerByteSize int, m
 
 		// 如果读取消息没有错误，就调用回调函数
 		if totalDataBytesRead > 0 && (dataReadError == nil || (dataReadError != nil && dataReadError == io.EOF)) {
-			err := cb(context.TODO(), conn, dataBuffer[:iMsgLength])
-			if err != nil && enableLogging {
+			err := cb(context.TODO(), conn, iMsgLength, dataBuffer[:iMsgLength])
+			if err != nil {
 				logger.Infof("Error in Callback: %s", err)
 			}
 		}
