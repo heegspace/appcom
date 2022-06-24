@@ -2,7 +2,6 @@ package appcom
 
 import (
 	"context"
-	"encoding/binary"
 	"io"
 	"net"
 	"sync"
