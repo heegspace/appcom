@@ -163,7 +163,7 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 	}
 
 	isStop := false
-	rstamp = time.Now().Unix()
+	rstamp := time.Now().Unix()
 	timer := time.NewTicker(time.Duration(5 * uint64(time.Second)))
 	// 主逻辑协程
 	for {
