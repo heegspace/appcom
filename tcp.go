@@ -10,24 +10,6 @@ import (
 	"go-micro.dev/v4/logger"
 )
 
-var (
-	DefaultMaxMessageSize = int(1 << 20)
-)
-
-func byteArrayToUInt32(bytes []byte) (result int64, bytesRead int) {
-	return binary.Varint(bytes)
-}
-
-func intToByteArray(value int64, bufferSize int) []byte {
-	toWriteLen := make([]byte, bufferSize)
-	binary.PutVarint(toWriteLen, value)
-	return toWriteLen
-}
-
-type ListenCb func(context.Context, *net.TCPListener) error
-type RecvCb func(context.Context, *net.TCPConn, int, []byte) error
-type ConnectCb func(context.Context, *net.TCPConn) error
-type CloseCb func(context.Context, *net.TCPConn) error
 type TCPListener struct {
 	socket          *net.TCPListener
 	address         string

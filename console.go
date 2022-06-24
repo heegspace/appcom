@@ -2,71 +2,58 @@ package appcom
 
 import (
 	"context"
-	"encoding/binary"
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"go-micro.dev/v4/logger"
 )
 
-var (
-	DefaultMaxMessageSize = int(1 << 20)
-)
-
-func byteArrayToUInt32(bytes []byte) (result int64, bytesRead int) {
-	return binary.Varint(bytes)
-}
-
-func intToByteArray(value int64, bufferSize int) []byte {
-	toWriteLen := make([]byte, bufferSize)
-	binary.PutVarint(toWriteLen, value)
-	return toWriteLen
-}
-
-type ListenCb func(context.Context, *net.TCPListener) error
-type RecvCb func(context.Context, *net.TCPConn, []byte) error
-type ConnectCb func(context.Context, *net.TCPConn) error
-type CloseCb func(context.Context, *net.TCPConn) error
-type TCPListener struct {
+type ConsoleListener struct {
 	socket          *net.TCPListener
 	address         string
-	headerByteSize  int
 	maxMessageSize  int
 	listenCb        ListenCb
 	connectCb       ConnectCb
-	recvCb          RecvCb
+	cmdCb           CmdCb
 	closeCb         CloseCb
 	shutdownChannel chan struct{}
 	shutdownGroup   *sync.WaitGroup
+
+	rTiemout int
+	wTimeout int
 }
 
-type TCPListenerConfig struct {
+type ConsoleListenerConfig struct {
 	MaxMessageSize int
 	EnableLogging  bool
 	Address        string
 	ListenCb       ListenCb
 	ConnectCb      ConnectCb
-	RecvCb         RecvCb
+	CmdCb          CmdCb
 	CloseCb        CloseCb
+	RTimeout       int
+	WTimeout       int
 }
 
-func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
+func ListenConsole(cfg ConsoleListenerConfig) (*ConsoleListener, error) {
 	maxMessageSize := DefaultMaxMessageSize
 	// 0 is the default, and the message must be atleast 1 byte large
 	if cfg.MaxMessageSize != 0 {
 		maxMessageSize = cfg.MaxMessageSize
 	}
-	btl := &TCPListener{
+	btl := &ConsoleListener{
 		maxMessageSize:  maxMessageSize,
-		headerByteSize:  4, // 4byte(int32)
 		listenCb:        cfg.ListenCb,
 		connectCb:       cfg.ConnectCb,
-		recvCb:          cfg.RecvCb,
+		cmdCb:           cfg.CmdCb,
 		closeCb:         cfg.CloseCb,
 		shutdownChannel: make(chan struct{}),
 		address:         cfg.Address,
 		shutdownGroup:   &sync.WaitGroup{},
+		rTiemout:        cfg.RTimeout,
+		wTimeout:        cfg.WTimeout,
 	}
 
 	if err := btl.openSocket(); err != nil {
@@ -76,7 +63,7 @@ func ListenTCP(cfg TCPListenerConfig) (*TCPListener, error) {
 	return btl, nil
 }
 
-func (btl *TCPListener) blockListen() error {
+func (btl *ConsoleListener) blockListen() error {
 	for {
 		conn, err := btl.socket.AcceptTCP()
 		if err != nil {
@@ -87,12 +74,12 @@ func (btl *TCPListener) blockListen() error {
 			default:
 			}
 		} else {
-			go handleListenedConn(conn, btl.maxMessageSize, btl.recvCb, btl.closeCb, btl.shutdownGroup)
+			go handleConsoleConn(conn, btl.maxMessageSize, btl.cmdCb, btl.closeCb, btl.shutdownGroup, uint64(btl.rTiemout))
 		}
 	}
 }
 
-func (btl *TCPListener) openSocket() error {
+func (btl *ConsoleListener) openSocket() error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", btl.address)
 	if err != nil {
 		return err
@@ -106,16 +93,16 @@ func (btl *TCPListener) openSocket() error {
 	return err
 }
 
-func (btl *TCPListener) StartListening() error {
+func (btl *ConsoleListener) StartListening() error {
 	return btl.blockListen()
 }
 
-func (btl *TCPListener) Close() {
+func (btl *ConsoleListener) Close() {
 	close(btl.shutdownChannel)
 	btl.shutdownGroup.Wait()
 }
 
-func (btl *TCPListener) StartListeningAsync() error {
+func (btl *ConsoleListener) StartListeningAsync() error {
 	var err error
 	go func() {
 		err = btl.blockListen()
@@ -123,7 +110,7 @@ func (btl *TCPListener) StartListeningAsync() error {
 	return err
 }
 
-func handleListenedConn(conn *net.TCPConn, maxMessageSize int, rcb RecvCb, ccb CloseCb, sdGroup *sync.WaitGroup) {
+func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb CloseCb, sdGroup *sync.WaitGroup, r_timeout uint64) {
 	// sdGroup.Add(1)
 	// defer sdGroup.Done()
 	dataBuffer := make([]byte, maxMessageSize)
@@ -134,7 +121,9 @@ func handleListenedConn(conn *net.TCPConn, maxMessageSize int, rcb RecvCb, ccb C
 
 		if nil != conn {
 			logger.Infof("Address %s: Client closed connection", conn.RemoteAddr())
-			ccb(context.TODO(), conn)
+			if nil != ccb {
+				ccb(context.TODO(), conn)
+			}
 			conn.Close()
 		}
 
@@ -145,7 +134,7 @@ func handleListenedConn(conn *net.TCPConn, maxMessageSize int, rcb RecvCb, ccb C
 	// 读数据协程
 	go func() {
 		for {
-			_, dataReadError := readFromConnection(conn, dataBuffer[0:maxMessageSize])
+			_, dataReadError := readFromConsole(conn, dataBuffer[0:maxMessageSize])
 			if dataReadError != nil {
 				if dataReadError != io.EOF {
 					// log the error from the call to read
@@ -159,7 +148,7 @@ func handleListenedConn(conn *net.TCPConn, maxMessageSize int, rcb RecvCb, ccb C
 			}
 
 			// 如果读取消息没有错误，就调用回调函数
-			err := rcb(context.TODO(), conn, dataBuffer)
+			err := rcb(context.TODO(), conn, string(dataBuffer))
 			if err != nil {
 				logger.Infof("Error in Callback: %s", err)
 			}
@@ -169,17 +158,29 @@ func handleListenedConn(conn *net.TCPConn, maxMessageSize int, rcb RecvCb, ccb C
 		}
 	}()
 
+	isStop := false
+	timer := time.NewTicker(time.Duration(r_timeout * uint64(time.Second)))
 	// 主逻辑协程
 	for {
 		select {
 		case <-recvCh:
+			timer = time.NewTicker(time.Duration(r_timeout * uint64(time.Second)))
 
+		case <-timer.C:
+			isStop = true
+			WriteToConsole(conn, []byte("Timeout Closed!"))
+
+			return
+		}
+
+		if isStop {
+			break
 		}
 	}
 }
 
 // Handles reading from a given connection.
-func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
+func readFromConsole(reader *net.TCPConn, buffer []byte) (int, error) {
 	// This fills the buffer
 	bytesLen, err := reader.Read(buffer)
 	// Output the content of the bytes to the queue
@@ -201,7 +202,7 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 	return bytesLen, nil
 }
 
-func WriteToConnections(conn *net.TCPConn, packet []byte) (n int, err error) {
+func WriteToConsole(conn *net.TCPConn, packet []byte) (n int, err error) {
 	if 0 == len(packet) {
 		return
 	}
