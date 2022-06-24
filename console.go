@@ -74,6 +74,9 @@ func (btl *ConsoleListener) blockListen() error {
 			default:
 			}
 		} else {
+			if nil != btl.connectCb {
+				btl.connectCb(context.TODO(), conn)
+			}
 			go handleConsoleConn(conn, btl.maxMessageSize, btl.cmdCb, btl.closeCb, btl.shutdownGroup, uint64(btl.rTiemout))
 		}
 	}
@@ -89,7 +92,9 @@ func (btl *ConsoleListener) openSocket() error {
 		return err
 	}
 	btl.socket = receiveSocket
-	btl.listenCb(context.TODO(), receiveSocket)
+	if nil != btl.listenCb {
+		btl.listenCb(context.TODO(), receiveSocket)
+	}
 	return err
 }
 
@@ -111,9 +116,9 @@ func (btl *ConsoleListener) StartListeningAsync() error {
 }
 
 func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb CloseCb, sdGroup *sync.WaitGroup, r_timeout uint64) {
+
 	// sdGroup.Add(1)
 	// defer sdGroup.Done()
-	dataBuffer := make([]byte, maxMessageSize)
 	defer func() {
 		if err := recover(); nil != err {
 			logger.Error("handleListenedConn ", err)
@@ -134,6 +139,7 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 	// 读数据协程
 	go func() {
 		for {
+			dataBuffer := make([]byte, maxMessageSize)
 			_, dataReadError := readFromConsole(conn, dataBuffer[0:maxMessageSize])
 			if dataReadError != nil {
 				if dataReadError != io.EOF {
@@ -154,7 +160,6 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 			}
 
 			recvCh <- 0
-			continue
 		}
 	}()
 
@@ -173,18 +178,21 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 
 		case <-timer.C:
 			// 超时断开连接
-			if int64(r_timeout) < int64(time.Now().Unix() - rstamp) {
+			if int64(r_timeout) < int64(time.Now().Unix()-rstamp) {
 				isStop = true
 				WriteToConsole(conn, []byte("Timeout Closed!"))
+
+				return
 			}
 
-			return
 		}
 
 		if isStop {
 			break
 		}
 	}
+
+	return
 }
 
 // Handles reading from a given connection.
