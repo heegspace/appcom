@@ -180,7 +180,7 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 			// 超时断开连接
 			if int64(r_timeout) < int64(time.Now().Unix()-rstamp) {
 				isStop = true
-				WriteToConsole(conn, []byte("Timeout Closed!"))
+				WriteToConsole(conn, []byte("Timeout Closed!\n"))
 
 				return
 			}
@@ -225,4 +225,53 @@ func WriteToConsole(conn *net.TCPConn, packet []byte) (n int, err error) {
 
 	conn.Write(packet)
 	return
+}
+
+func Console(cmdcb CmdCb) {
+	cfg := ConsoleListenerConfig{
+		MaxMessageSize: 1 << 20,
+		EnableLogging:  true,
+		Address:        buffstreams.FormatAddress("127.0.0.1", strconv.Itoa(0)),
+		ListenCb: func(ctx context.Context, conn *net.TCPListener) error {
+			logger.Info("LCallback ---------- ", conn.Addr().String())
+
+			return nil
+		},
+		ConnectCb: func(ctx context.Context, conn *net.TCPConn) error {
+			logger.Info("ConnectCb ---------- ", conn.RemoteAddr())
+
+			return nil
+		},
+		CloseCb: func(ctx context.Context, conn *net.TCPConn) error {
+			logger.Info("CloseCb ---------- ", conn.RemoteAddr())
+
+			return nil
+		},
+		CmdCb: func(ctx context.Context, conn *net.TCPConn, cmd string) error {
+			if nil != cmdcb {
+				res := cmdcb(ctx, conn, cmd)
+				WriteToConsole(conn, []byte(res))
+			}
+
+			return nil
+		},
+		RTimeout: 120,
+	}
+
+	btl, err := ListenConsole(cfg)
+	if err != nil {
+		logger.Error("ListenConsole ", err)
+
+		return
+	}
+	defer btl.Close()
+
+	err = btl.StartListeningAsync()
+	if nil != err {
+		logger.Error("StartListening ", err)
+
+		return
+	}
+
+	return 
 }
