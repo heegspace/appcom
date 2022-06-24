@@ -173,7 +173,7 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 
 		case <-timer.C:
 			// 超时断开连接
-			if r_timeout < (time.Now().Unix() - rstamp) {
+			if int64(r_timeout) < int64(time.Now().Unix() - rstamp) {
 				isStop = true
 				WriteToConsole(conn, []byte("Timeout Closed!"))
 			}
