@@ -158,17 +158,25 @@ func handleConsoleConn(conn *net.TCPConn, maxMessageSize int, rcb CmdCb, ccb Clo
 		}
 	}()
 
+	if 0 == r_timeout {
+		r_timeout = 60
+	}
+
 	isStop := false
-	timer := time.NewTicker(time.Duration(r_timeout * uint64(time.Second)))
+	rstamp = time.Now().Unix()
+	timer := time.NewTicker(time.Duration(5 * uint64(time.Second)))
 	// 主逻辑协程
 	for {
 		select {
 		case <-recvCh:
-			timer = time.NewTicker(time.Duration(r_timeout * uint64(time.Second)))
+			rstamp = time.Now().Unix()
 
 		case <-timer.C:
-			isStop = true
-			WriteToConsole(conn, []byte("Timeout Closed!"))
+			// 超时断开连接
+			if r_timeout < (time.Now().Unix() - rstamp) {
+				isStop = true
+				WriteToConsole(conn, []byte("Timeout Closed!"))
+			}
 
 			return
 		}
