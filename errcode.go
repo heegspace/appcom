@@ -2,34 +2,18 @@ package appcom
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"os"
 )
 
 var ERR_CODE map[string]interface{}
 
-// 加载响应码和响应信息文件
-// @param file 配置文件
-func LoadCodeFromFile(file string) {
-	if nil != ERR_CODE {
-		return
-	}
-
-	f, err := os.Open(file)
-	if err != nil {
-		fmt.Println(err)
-
-		return
-	}
-	defer f.Close()
-
-	data, _ := ioutil.ReadAll(f)
-
-	err = json.Unmarshal([]byte(data), &ERR_CODE)
+// 加载响应码和响应信息数据
+//
+// @param data 配置数据
+//
+func LoadCode(data string) {
+	err := json.Unmarshal([]byte(data), &ERR_CODE)
 	if nil != err {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
 
 	return
