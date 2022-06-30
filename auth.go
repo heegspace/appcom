@@ -127,3 +127,34 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 		c.Next()
 	}
 }
+
+// 权限中间件，检测对应的访问是否收到限制
+//
+// @param callback 	回调函数，用于回传cookie数据
+//
+func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		for k, v := range c.Request.Header {
+			fmt.Println(k, v)
+		}
+
+		var ck CookieInfo
+		jyauth, err := c.Cookie("hgauth")
+		if nil == err {
+			ck.Jyauth = jyauth
+		}
+		token, err := c.Cookie("__RequestVerificationToken")
+		if nil == err {
+			ck.Token = token
+		}
+
+		// 405 访问受限
+		if !callback(c, cookie) {
+			c.String(http.StatusMethodNotAllowed, "Not Allowed")
+			c.Abort()
+
+			return
+		}
+		c.Next()
+	}
+}
