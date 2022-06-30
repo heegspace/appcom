@@ -149,7 +149,7 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 		}
 
 		// 405 访问受限
-		if !callback(c, cookie) {
+		if callback(c, cookie) {
 			c.String(http.StatusMethodNotAllowed, "Not Allowed")
 			c.Abort()
 
