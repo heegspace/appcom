@@ -132,7 +132,7 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 //
 // @param callback 	回调函数，用于回传cookie数据
 //
-func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.HandlerFunc {
+func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string) bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
@@ -150,6 +150,13 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 			return
 		}
 
+		if 0 != len(myId) {
+			uniqueId = myId
+		}
+		if 0 != len(Bidden) {
+			uniqueId = Bidden
+		}
+
 		var ck CookieInfo
 		jyauth, err := c.Cookie("hgauth")
 		if nil == err {
@@ -161,18 +168,11 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 		}
 
 		// 405 访问受限
-		if callback(c, ck) {
+		if callback(c, ck, uniqueId) {
 			c.String(http.StatusMethodNotAllowed, "Not Allowed")
 			c.Abort()
 
 			return
-		}
-
-		if 0 != len(myId) {
-			uniqueId = myId
-		}
-		if 0 != len(Bidden) {
-			uniqueId = Bidden
 		}
 
 		c.Set("uniqueid", uniqueId)
