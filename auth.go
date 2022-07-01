@@ -132,10 +132,16 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 //
 // @param callback 	回调函数，用于回传cookie数据
 //
-func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string) bool) gin.HandlerFunc {
+func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string) bool, openFn func() bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
+		}
+
+		if !openFn() {
+			c.Next()
+
+			return
 		}
 
 		// 获取唯一id
