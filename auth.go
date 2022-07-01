@@ -138,6 +138,16 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 			fmt.Println(k, v)
 		}
 
+		// 获取唯一id
+		uniqueId := c.Request.Header.Get("Tag-unid")
+		if 0 == len(uniqueId) {
+			// 403 禁止访问
+			c.String(http.StatusForbidden, "Forbidden")
+			c.Abort()
+
+			return
+		}
+
 		var ck CookieInfo
 		jyauth, err := c.Cookie("hgauth")
 		if nil == err {
@@ -155,6 +165,8 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 
 			return
 		}
+
+		c.Set("uniqueid", uniqueId)
 		c.Next()
 	}
 }
