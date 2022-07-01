@@ -139,8 +139,10 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 		}
 
 		// 获取唯一id
-		uniqueId := c.Request.Header.Get("Tag-unid")
-		if 0 == len(uniqueId) {
+		uniqueId := c.Request.Header.Get("Tag-Unid")
+		myId := c.Request.Header.Get("My-Id")
+		Bidden := c.Request.Header.Get("B-Idden")
+		if 0 == len(uniqueId) && 0 == len(myId) && 0 == len(Bidden) {
 			// 403 禁止访问
 			c.String(http.StatusForbidden, "Forbidden")
 			c.Abort()
@@ -159,11 +161,18 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handle
 		}
 
 		// 405 访问受限
-		if callback(c, cookie) {
+		if callback(c, ck) {
 			c.String(http.StatusMethodNotAllowed, "Not Allowed")
 			c.Abort()
 
 			return
+		}
+
+		if 0 != len(myId) {
+			uniqueId = myId
+		}
+		if 0 != len(Bidden) {
+			uniqueId = Bidden
 		}
 
 		c.Set("uniqueid", uniqueId)
