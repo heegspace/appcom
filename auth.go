@@ -131,9 +131,13 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 
 // 权限中间件，检测对应的访问是否收到限制
 //
-// @param callback 	回调函数，用于回传cookie数据
+// @param cb 	回调函数，用于回传cookie数据
+//	 返回：
+//		int		策略状态
+//		string	策略信息
+// @param	openFn 	是否打开了限制验证
 //
-func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string) bool, openFn func() bool) gin.HandlerFunc {
+func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (int, string), openFn func() bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
@@ -188,8 +192,10 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string)
 		}
 
 		// 405 访问受限
-		if callback(c, ck, Bidden) {
-			c.String(http.StatusMethodNotAllowed, "Not Allowed")
+		status, strategy := cb(c, ck, Bidden)
+		if 0 != status {
+			// c.String(http.StatusMethodNotAllowed, "Not Allowed")
+			c.String(status, strategy)
 			c.Abort()
 
 			return
