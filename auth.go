@@ -3,6 +3,7 @@ package appcom
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -148,20 +149,33 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string)
 		uniqueId := c.Request.Header.Get("Tag-Unid")
 		myId := c.Request.Header.Get("My-Id")
 		Bidden := c.Request.Header.Get("B-Idden")
-		if 0 == len(uniqueId) && 0 == len(myId) && 0 == len(Bidden) {
+		if (0 == len(uniqueId) && 0 == len(myId) && 0 == len(Bidden)) || 0 == len(Bidden) {
 			// 403 禁止访问
-			c.String(http.StatusForbidden, "Forbidden")
+			c.String(http.StatusForbidden, "Forbidden, 请你通过正规方式访问！")
 			c.Abort()
 
 			return
 		}
+		bids := strings.Split(Bidden, "/")
+		if 2 != len(bids) {
+			// 403 禁止访问
+			c.String(http.StatusForbidden, "请你合理访问，否则将追究法律责任")
+			c.Abort()
 
-		if 0 != len(myId) {
-			uniqueId = myId
+			return
 		}
-		if 0 != len(Bidden) {
-			uniqueId = Bidden
+		Bidden = bids[0]
+		sign := bids[1]
+		sigs := strings.Split(sign, "-")
+		if 2 != len(sigs) {
+			// 403 禁止访问
+			c.String(http.StatusForbidden, "你的行为已被监控，请合理访问，否则将追究法律责任")
+			c.Abort()
+
+			return
 		}
+		// 时间戳
+		// stamp := sigs[1]
 
 		var ck CookieInfo
 		jyauth, err := c.Cookie("hgauth")
@@ -174,7 +188,7 @@ func IsLimited(callback func(c *gin.Context, cookie CookieInfo, uniqueid string)
 		}
 
 		// 405 访问受限
-		if callback(c, ck, uniqueId) {
+		if callback(c, ck, Bidden) {
 			c.String(http.StatusMethodNotAllowed, "Not Allowed")
 			c.Abort()
 
