@@ -155,7 +155,7 @@ func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (bool
 		Bidden := c.Request.Header.Get("B-Idden")
 		if (0 == len(uniqueId) && 0 == len(myId) && 0 == len(Bidden)) || 0 == len(Bidden) {
 			// 403 禁止访问
-			c.String(http.StatusForbidden, "Forbidden, 请你通过正规方式访问！")
+			c.String(http.StatusForbidden, "访问被禁止, 请您通过正规途径访问，否则后果自负！")
 			c.Abort()
 
 			return
