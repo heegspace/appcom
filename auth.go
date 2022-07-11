@@ -137,13 +137,13 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 //		string	策略信息
 // @param	openFn 	是否打开了限制验证
 //
-func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (bool, string), openFn func() bool) gin.HandlerFunc {
+func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (bool, string), openFn func(c *gin.Context) bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
 		}
 
-		if !openFn() {
+		if !openFn(c) {
 			c.Next()
 
 			return
