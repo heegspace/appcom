@@ -1,6 +1,7 @@
 package appcom
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,10 +16,16 @@ type CookieInfo struct {
 }
 
 type Condittion struct {
-	Key 		string `json:"key"`		// 需要检查的url
-	Vip 		int64  `json:"vip"`		// vip用户
-	Login 		int64  `json:"login"`	// 登陆用户
-	Nothing 	int64  `json:"nothing"`	// 没有登陆
+	Key     string `json:"key"`     // 需要检查的url
+	Vip     int64  `json:"vip"`     // vip用户
+	Login   int64  `json:"login"`   // 登陆用户
+	Nothing int64  `json:"nothing"` // 没有登陆
+}
+
+func (obj Condittion) Dump() string {
+	data, _ := json.Marshal(&obj)
+
+	return string(data)
 }
 
 // 解析cookie数据
@@ -144,13 +151,13 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 //		string	策略信息
 // @param	openFn 	是否打开了限制验证
 //
-func IsLimited(cb func(*gin.Context, CookieInfo, string, Condittion) (bool, string), openFn func( *gin.Context) (bool,Condittion)) gin.HandlerFunc {
+func IsLimited(cb func(*gin.Context, CookieInfo, string, Condittion) (bool, string), openFn func(*gin.Context) (bool, Condittion)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
 		}
 
-		is,condit := openFn(c)
+		is, condit := openFn(c)
 		if !is {
 			c.Next()
 
