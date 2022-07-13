@@ -14,6 +14,13 @@ type CookieInfo struct {
 	Token  string `json:"__RequestVerificationToken" form:"__RequestVerificationToken"`
 }
 
+type Condittion struct {
+	Key 		string `json:"key"`		// 需要检查的url
+	Vip 		int64  `json:"vip"`		// vip用户
+	Login 		int64  `json:"login"`	// 登陆用户
+	Nothing 	int64  `json:"nothing"`	// 没有登陆
+}
+
 // 解析cookie数据
 // 将头部的cookie或url中的cookie数据解析出来
 // 有限解析head中的数据
@@ -137,13 +144,14 @@ func NeedCookie(callback func(c *gin.Context, cookie CookieInfo) bool) gin.Handl
 //		string	策略信息
 // @param	openFn 	是否打开了限制验证
 //
-func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (bool, string), openFn func(c *gin.Context) bool) gin.HandlerFunc {
+func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string, cond Condittion) (bool, string), openFn func(c *gin.Context) (bool,Condittion)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		for k, v := range c.Request.Header {
 			fmt.Println(k, v)
 		}
 
-		if !openFn(c) {
+		is,condit := openFn(c)
+		if !is {
 			c.Next()
 
 			return
@@ -192,7 +200,7 @@ func IsLimited(cb func(c *gin.Context, cookie CookieInfo, uniqueid string) (bool
 		}
 
 		// 405 访问受限
-		is, strategy := cb(c, ck, Bidden)
+		is, strategy := cb(c, ck, Bidden, condit)
 		if is {
 			c.String(http.StatusMethodNotAllowed, strategy)
 			c.Abort()
