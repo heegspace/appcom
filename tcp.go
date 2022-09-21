@@ -222,7 +222,7 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 	return bytesLen, nil
 }
 
-func WriteToConnections(conn net.Conn, packet []byte) (n int, err error) {
+func WriteToConnections(conn *net.TCPConn, packet []byte) (n int, err error) {
 	if 0 == len(packet) {
 		return
 	}
