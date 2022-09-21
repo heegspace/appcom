@@ -68,6 +68,11 @@ func (btl *TCPListener) blockListen() error {
 			default:
 			}
 		} else {
+
+			if nil != btl.connectCb {
+				btl.connectCb(context.TODO(), conn)
+			}
+
 			go handleListenedConn(conn, btl.headerByteSize, btl.maxMessageSize, btl.recvCb, btl.closeCb, btl.shutdownGroup)
 		}
 	}
@@ -82,8 +87,12 @@ func (btl *TCPListener) openSocket() error {
 	if err != nil {
 		return err
 	}
+
+	if nil != btl.listenCb {
+		btl.listenCb(context.TODO(), receiveSocket)
+	}
+
 	btl.socket = receiveSocket
-	btl.listenCb(context.TODO(), receiveSocket)
 	return err
 }
 
@@ -213,7 +222,7 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 	return bytesLen, nil
 }
 
-func WriteToConnections(conn *net.TCPConn, packet []byte) (n int, err error) {
+func WriteToConnections(conn net.Conn, packet []byte) (n int, err error) {
 	if 0 == len(packet) {
 		return
 	}

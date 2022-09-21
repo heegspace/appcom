@@ -94,3 +94,51 @@ func HandleErr(c *gin.Context, code float64, msg string, err error)
 		"error": err,
 	}
 ```
+
+## tcp使用
+```
+tcps, err := ListenTCP(TCPListenerConfig{
+		MaxMessageSize: 1024 * 16,
+		EnableLogging:  true,
+		Address:        "0.0.0.0:8990",
+		ListenCb: func(ctx context.Context, conn *net.TCPListener) error {
+			fmt.Println("ListenCb ---------- ")
+
+			return nil
+		},
+		ConnectCb: func(ctx context.Context, conn *net.TCPConn) error {
+			fmt.Println("ConnectCb ---------- ")
+
+			return nil
+		},
+		RecvCb: func(ctx context.Context, conn *net.TCPConn, size int, data []byte) error {
+			fmt.Println("RecvCb ---------- ", string(data))
+
+			return nil
+		},
+		CloseCb: func(ctx context.Context, conn *net.TCPConn) error {
+
+			return nil
+		},
+	})
+```
+
+client:
+```
+conn, err := net.Dial("tcp", "127.0.0.1:8990")
+if err != nil {
+	fmt.Println("client1 dial err =", err)
+	return
+}
+defer conn.Close() // 关闭连接
+
+data := fmt.Sprintf("Client send data %d", 100)
+n, err := WriteToConnections(conn, []byte(data))
+if nil != err {
+	fmt.Println("WriteToConnections err ", err)
+
+	continue
+}
+
+fmt.Println("WriteToConnections send: ", n)
+```
