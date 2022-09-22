@@ -73,7 +73,7 @@ func (btl *TCPListener) blockListen() error {
 				btl.connectCb(context.TODO(), conn)
 			}
 
-			go handleListenedConn(conn, btl.headerByteSize, btl.maxMessageSize, btl.recvCb, btl.closeCb, btl.shutdownGroup)
+			go handleListenedConn(conn, btl.headerByteSize, btl.maxMessageSize, btl.recvCb, btl.closeCb)
 		}
 	}
 }
@@ -113,9 +113,7 @@ func (btl *TCPListener) StartListeningAsync() error {
 	return err
 }
 
-func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize int, rcb RecvCb, ccb CloseCb, sdGroup *sync.WaitGroup) {
-	// sdGroup.Add(1)
-	// defer sdGroup.Done()
+func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize int, rcb RecvCb, ccb CloseCb) {
 	headerBuffer := make([]byte, headerByteSize)
 	dataBuffer := make([]byte, maxMessageSize)
 	defer func() {
@@ -220,6 +218,12 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 	}
 	// Read some bytes, return the length
 	return bytesLen, nil
+}
+
+func ReadFromTcp(conn *net.TCPConn, rcb RecvCb, ccb CloseCb) (err error) {
+	handleListenedConn(conn, 4, 1024*16, rcb, ccb)
+
+	return
 }
 
 func WriteToConnections(conn *net.TCPConn, packet []byte) (n int, err error) {
