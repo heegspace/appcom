@@ -117,9 +117,9 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 	headerBuffer := make([]byte, headerByteSize)
 	dataBuffer := make([]byte, maxMessageSize)
 	defer func() {
-		// if err := recover(); nil != err {
-		// 	logger.Error("handleListenedConn ", err)
-		// }
+		if err := recover(); nil != err {
+			logger.Error("handleListenedConn ", err)
+		}
 
 		if nil != conn {
 			logger.Infof("Address %s: Client closed connection", conn.RemoteAddr())
