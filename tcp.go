@@ -122,7 +122,7 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 		}
 
 		if nil != conn {
-			logger.Infof("Address %s: Client closed connection", conn.RemoteAddr())
+			logger.Errorf("Address %s: Client closed connection", conn.RemoteAddr())
 			conn.Close()
 		}
 
@@ -146,10 +146,10 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 		if headerReadError != nil {
 			if headerReadError != io.EOF {
 				// Log the error we got from the call to read
-				logger.Infof("Error when trying to read from address %s. Tried to read %d, actually read %d. Underlying error: %s", conn.RemoteAddr(), headerByteSize, totalHeaderBytesRead, headerReadError)
+				logger.Errorf("Error when trying to read from address %s. Tried to read %d, actually read %d. Underlying error: %s", conn.RemoteAddr(), headerByteSize, totalHeaderBytesRead, headerReadError)
 			} else {
 				// Client closed the conn
-				logger.Infof("Address %s: Client closed connection during header read. Underlying error: %s", conn.RemoteAddr(), headerReadError)
+				logger.Errorf("Address %s: Client closed connection during header read. Underlying error: %s", conn.RemoteAddr(), headerReadError)
 			}
 
 			return
@@ -160,12 +160,12 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 		// Not sure what the correct way to handle these errors are. For now, bomb out
 		if bytesParsed == 0 {
 			// "Buffer too small"
-			logger.Infof("Address %s: 0 Bytes parsed from header. Underlying error: %s", conn.RemoteAddr(), headerReadError)
+			logger.Errorf("Address %s: 0 Bytes parsed from header. Underlying error: %s", conn.RemoteAddr(), headerReadError)
 			conn.Close()
 			return
 		} else if bytesParsed < 0 {
 			// "Buffer overflow"
-			logger.Infof("Address %s: Buffer Less than zero bytes parsed from header. Underlying error: %s", conn.RemoteAddr(), headerReadError)
+			logger.Errorf("Address %s: Buffer Less than zero bytes parsed from header. Underlying error: %s", conn.RemoteAddr(), headerReadError)
 			return
 		}
 		var dataReadError error
@@ -181,10 +181,10 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 		if dataReadError != nil {
 			if dataReadError != io.EOF {
 				// log the error from the call to read
-				logger.Infof("Address %s: Failure to read from connection. Was told to read %d by the header, actually read %d. Underlying error: %s", conn.RemoteAddr(), msgLength, totalDataBytesRead, dataReadError)
+				logger.Errorf("Address %s: Failure to read from connection. Was told to read %d by the header, actually read %d. Underlying error: %s", conn.RemoteAddr(), msgLength, totalDataBytesRead, dataReadError)
 			} else {
 				// The client wrote the header but closed the connection
-				logger.Infof("Address %s: Client closed connection during data read. Underlying error: %s", conn.RemoteAddr(), dataReadError)
+				logger.Errorf("Address %s: Client closed connection during data read. Underlying error: %s", conn.RemoteAddr(), dataReadError)
 			}
 
 			return
@@ -194,7 +194,7 @@ func handleListenedConn(conn *net.TCPConn, headerByteSize int, maxMessageSize in
 		if totalDataBytesRead > 0 && (dataReadError == nil || (dataReadError != nil && dataReadError == io.EOF)) {
 			err := rcb(context.TODO(), conn, iMsgLength, dataBuffer[:iMsgLength])
 			if err != nil {
-				logger.Infof("Error in Callback: %s", err)
+				logger.Errorf("Error in Callback: %s", err)
 			}
 		}
 	}
@@ -223,8 +223,10 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 	return bytesLen, nil
 }
 
+// 读取数据
+//
 func ReadFromTcp(conn *net.TCPConn, rcb RecvCb, ccb CloseCb) (err error) {
-	handleListenedConn(conn, 4, 1024*16, rcb, ccb)
+	handleListenedConn(conn, 4, 1024*128, rcb, ccb)
 
 	return
 }
