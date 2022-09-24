@@ -234,6 +234,12 @@ func WriteToConnections(conn *net.TCPConn, packet []byte) (n int, err error) {
 		return
 	}
 
+	if nil == conn {
+		logger.Warn("WriteToConnections conn is nil")
+
+		return
+	}
+
 	msgLenHeader := intToByteArray(int64(len(packet)), 4)
 	toWrite := append(msgLenHeader, packet...)
 
