@@ -226,7 +226,7 @@ func readFromConnection(reader *net.TCPConn, buffer []byte) (int, error) {
 // 读取数据
 //
 func ReadFromTcp(conn *net.TCPConn, rcb RecvCb, ccb CloseCb) (err error) {
-	handleListenedConn(conn, 4, 1024*128, rcb, ccb)
+	handleListenedConn(conn, 4, DefaultMaxMessageSize, rcb, ccb)
 
 	return
 }
